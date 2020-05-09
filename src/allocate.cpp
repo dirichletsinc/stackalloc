@@ -61,7 +61,7 @@ bool contains(char *p, std::unique_ptr<char[]> &block = current_block) {
   if (!block)
     return false;
   auto &info = get_block_info(block);
-  return p >= block.get() && (p - block.get()) < info.size;
+  return p >= block.get() && std::size_t(p - block.get()) < info.size;
 }
 } // namespace
 
