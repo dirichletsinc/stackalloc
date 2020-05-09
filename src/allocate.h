@@ -41,7 +41,8 @@ private:
   stack_ptr &operator=(const stack_ptr &s) = delete;
 
   // This friend function needs access to the constructors to perform allocation
-  template <class... Args> friend stack_ptr<T> make_stack_ptr(Args &&...);
+  template <typename U, typename V, class... Args>
+  friend stack_ptr<U> make_stack_ptr(Args &&...);
 
 public:
   ~stack_ptr() { detail::deallocate(reinterpret_cast<char *>(p)); }
@@ -51,7 +52,7 @@ public:
   pointer get() const noexcept { return p; }
 
   // Provides access to the managed object
-  typename std::add_lvalue_reference<T>::type operator&() const { return *p; }
+  typename std::add_lvalue_reference<T>::type operator*() const { return *p; }
   pointer operator->() const noexcept { return p; }
 };
 
@@ -75,7 +76,8 @@ private:
   stack_ptr &operator=(const stack_ptr &s) = delete;
 
   // This friend function needs access to the constructors to perform allocation
-  friend stack_ptr<T> make_stack_ptr<T>(std::size_t);
+  template <typename U, typename V>
+  friend stack_ptr<U> make_stack_ptr(std::size_t);
 
 public:
   ~stack_ptr() { detail::deallocate(reinterpret_cast<char *>(p)); }
@@ -106,8 +108,8 @@ stack_ptr<T> make_stack_ptr(Args &&... args) {
   return {new (detail::allocate(sizeof(T))) T(std::forward<Args>(args)...)};
 }
 template <typename T, typename> stack_ptr<T> make_stack_ptr(std::size_t size) {
-  return {reinterpret_cast<typename stack_ptr<T>::pointer>(
-              detail::allocate(sizeof(stack_ptr<T>::element_type) * size)),
+  return {reinterpret_cast<typename stack_ptr<T>::pointer>(detail::allocate(
+              sizeof(typename stack_ptr<T>::element_type) * size)),
           size};
 }
 
