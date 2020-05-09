@@ -75,7 +75,7 @@ private:
   stack_ptr &operator=(const stack_ptr &s) = delete;
 
   // This friend function needs access to the constructors to perform allocation
-  friend stack_ptr<T> make_stack_ptr(std::size_t);
+  friend stack_ptr<T> make_stack_ptr<T>(std::size_t);
 
 public:
   ~stack_ptr() { detail::deallocate(reinterpret_cast<char *>(p)); }
