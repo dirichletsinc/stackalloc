@@ -27,6 +27,7 @@ TEST_CASE("Allocations are cache aligned", "[short]") {
   std::size_t space = 64;
 
   SECTION("Object allocations") {
+    auto b = stackalloc::make_stack_ptr<bool>(false);
     auto obj0 = stackalloc::make_stack_ptr<example_class>(2, 2.4, false);
     auto obj1 = stackalloc::make_stack_ptr<example_class>(2, 2.4, false);
 
@@ -36,9 +37,12 @@ TEST_CASE("Allocations are cache aligned", "[short]") {
     p = reinterpret_cast<void *>(obj1.get());
     REQUIRE(std::align(cache_line_size, 1, p, space));
     REQUIRE(p == reinterpret_cast<void *>(obj1.get()));
+    p = reinterpret_cast<void *>(b.get());
+    REQUIRE(std::align(cache_line_size, 1, p, space));
+    REQUIRE(p == reinterpret_cast<void *>(b.get()));
   }
 
-  SECTION("Arrat allocations") {
+  SECTION("Array allocations") {
     auto a0 = stackalloc::make_stack_ptr<int[]>(1000);
     auto a1 = stackalloc::make_stack_ptr<double[]>(1500);
 
@@ -49,4 +53,57 @@ TEST_CASE("Allocations are cache aligned", "[short]") {
     REQUIRE(std::align(cache_line_size, 1, p, space));
     REQUIRE(p == reinterpret_cast<void *>(a1.get()));
   }
+}
+
+TEST_CASE("Subsequent allocations should abutt", "[short]") {
+  // first force a gigantic allocation to give ourselves lots of free space
+  { auto a = stackalloc::make_stack_ptr<int[]>(cache_line_size * 10000); }
+  auto a = stackalloc::make_stack_ptr<int[]>(cache_line_size * 10);
+  auto b = stackalloc::make_stack_ptr<int[]>(cache_line_size * 50);
+  auto c = stackalloc::make_stack_ptr<int[]>(cache_line_size * 100);
+  auto d = stackalloc::make_stack_ptr<double[]>(cache_line_size * 10);
+  REQUIRE(a.end() == b.begin());
+  REQUIRE(b.end() == c.begin());
+  REQUIRE(c.end() == reinterpret_cast<int *>(d.begin()));
+}
+
+TEST_CASE("Deep nested allocations don't throw", "[short]") {
+  auto a = stackalloc::make_stack_ptr<int[]>(cache_line_size * 10000);
+  {
+    auto a = stackalloc::make_stack_ptr<int[]>(cache_line_size * 10000);
+    auto b = stackalloc::make_stack_ptr<int[]>(cache_line_size * 10000);
+    auto c = stackalloc::make_stack_ptr<int[]>(cache_line_size * 10000);
+    auto d = stackalloc::make_stack_ptr<int[]>(cache_line_size * 10000);
+    {
+      auto a = stackalloc::make_stack_ptr<int[]>(cache_line_size * 10000);
+      auto b = stackalloc::make_stack_ptr<int[]>(cache_line_size * 10000);
+      auto c = stackalloc::make_stack_ptr<int[]>(cache_line_size * 10000);
+      auto d = stackalloc::make_stack_ptr<int[]>(cache_line_size * 10000);
+
+      REQUIRE_NOTHROW(a.begin()[0] = 1);
+      REQUIRE_NOTHROW(a.end()[-1] = 2);
+      REQUIRE(a[0] == 1);
+      REQUIRE(a[a.size() - 1] == 2);
+
+      REQUIRE_NOTHROW(d.begin()[0] = 3);
+      REQUIRE_NOTHROW(d.end()[-1] = 4);
+      REQUIRE(d[0] == 3);
+      REQUIRE(d[d.size() - 1] == 4);
+    }
+
+    REQUIRE_NOTHROW(a.begin()[0] = 5);
+    REQUIRE_NOTHROW(a.end()[-1] = 6);
+    REQUIRE(a[0] == 5);
+    REQUIRE(a[a.size() - 1] == 6);
+
+    REQUIRE_NOTHROW(d.begin()[0] = 7);
+    REQUIRE_NOTHROW(d.end()[-1] = 8);
+    REQUIRE(d[0] == 7);
+    REQUIRE(d[d.size() - 1] == 8);
+  }
+
+  REQUIRE_NOTHROW(a.begin()[0] = 9);
+  REQUIRE_NOTHROW(a.end()[-1] = 0);
+  REQUIRE(a[0] == 9);
+  REQUIRE(a[a.size() - 1] == 0);
 }
