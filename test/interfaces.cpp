@@ -10,6 +10,11 @@ struct example_class {
 
 TEST_CASE("Single object interface works", "[short]") {
   auto obj = stackalloc::make_stack_ptr<example_class>(2, 2.4, false);
+  static_assert(!std::is_copy_constructible_v<decltype(obj)>);
+  static_assert(!std::is_move_constructible_v<decltype(obj)>);
+  static_assert(!std::is_copy_assignable_v<decltype(obj)>);
+  static_assert(!std::is_move_assignable_v<decltype(obj)>);
+
   REQUIRE(obj.get() != nullptr);
   REQUIRE(&(*obj) == obj.get());
   REQUIRE(obj->a == 2);
@@ -19,6 +24,11 @@ TEST_CASE("Single object interface works", "[short]") {
 
 TEST_CASE("Array interface works", "[short]") {
   auto obj = stackalloc::make_stack_ptr<int[]>(1000);
+  static_assert(!std::is_copy_constructible_v<decltype(obj)>);
+  static_assert(!std::is_move_constructible_v<decltype(obj)>);
+  static_assert(!std::is_copy_assignable_v<decltype(obj)>);
+  static_assert(!std::is_move_assignable_v<decltype(obj)>);
+
   REQUIRE(obj.get() != nullptr);
   REQUIRE(obj.size() == 1000);
   for (size_t i = 0; i < std::size(obj); ++i)
