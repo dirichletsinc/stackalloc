@@ -22,7 +22,7 @@ template <typename T,
 stack_ptr<T> make_stack_ptr(std::size_t size);
 
 // A class for a managed allocation (object variation)
-// Thse objects cannot be copied, and will deallocate themselves at the end of
+// These objects cannot be copied, and will deallocate themselves at the end of
 // the scope they were allocated in
 template <typename T> class stack_ptr {
 public:
