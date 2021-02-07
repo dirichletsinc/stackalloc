@@ -29,7 +29,7 @@ private:
   struct block_info {
     // The underlying ptr to be deleted
     void *underlying_ptr;
-    // The size of the previous block
+    // The previous block
     char *previous_block;
     // The size of this block
     std::size_t size;
@@ -67,9 +67,10 @@ public:
     auto &info = get_info();
     info.underlying_ptr = alloc;
     info.previous_block = std::exchange(b.aligned_alloc, nullptr);
-    info.size = extended_size;
-    info.current_offset = round_to_cache_lines(sizeof(block_info)) +
-                          reinterpret_cast<char *>(aligned_alloc);
+    info.size =
+        extended_size - (aligned_alloc - reinterpret_cast<char *>(alloc));
+    info.current_offset =
+        aligned_alloc + round_to_cache_lines(sizeof(block_info));
   }
   block(std::size_t size) : block(size, block()) {}
 
@@ -100,7 +101,8 @@ public:
 
   bool dealloc(char *p) {
     auto &info = get_info();
-    if (!(aligned_alloc && p >= aligned_alloc &&
+    if (!(aligned_alloc &&
+          p >= aligned_alloc + round_to_cache_lines(sizeof(block_info)) &&
           std::size_t(p - aligned_alloc) < info.size))
       return false;
     if (p < info.current_offset)
