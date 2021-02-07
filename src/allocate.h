@@ -23,7 +23,7 @@ stack_ptr<T> make_stack_ptr(std::size_t size);
 
 // A class for a managed allocation (object variation)
 // These objects cannot be copied, and will deallocate themselves at the end of
-// the scope they were allocated in
+// the scope in which they were allocated
 template <typename T> class stack_ptr {
 public:
   using pointer = T *;
@@ -66,7 +66,7 @@ private:
   // The underlying pointer
   pointer p;
 
-  // The size of the allocated block (1 for
+  // The size of the allocated block
   std::size_t s;
 
   // Constructs a stack_ptr from a raw pointer and size

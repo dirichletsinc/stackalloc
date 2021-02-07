@@ -53,6 +53,7 @@ public:
   block() : aligned_alloc(nullptr) {}
   block(block &&b) : aligned_alloc(std::exchange(b.aligned_alloc, nullptr)) {}
   block(const block &b) = delete;
+  // Constructs a block of a given size, with a sub-block b
   block(std::size_t size, block &&b) {
     // Add an extra cache line for the alignment
     auto extended_size =
