@@ -37,14 +37,16 @@ private:
     char *current_offset;
   };
 
+  static constexpr std::size_t info_offset =
+      round_to_cache_lines(sizeof(block_info));
   char *aligned_alloc;
 
   block_info &get_info() {
-    return *reinterpret_cast<block_info *>(aligned_alloc);
+    return *reinterpret_cast<block_info *>(aligned_alloc - info_offset);
   }
 
   const block_info &get_info() const {
-    return *reinterpret_cast<const block_info *>(aligned_alloc);
+    return *reinterpret_cast<const block_info *>(aligned_alloc - info_offset);
   }
 
   block(char *p) : aligned_alloc(p) {}
@@ -57,21 +59,20 @@ public:
   block(std::size_t size, block &&b) {
     // Add an extra cache line for the alignment
     auto extended_size =
-        size + cache_line_size + round_to_cache_lines(sizeof(block_info));
+        size + cache_line_size + info_offset;
     void *alloc = ::operator new(extended_size);
     void *aligned_alloc_void = alloc;
     if (!std::align(cache_line_size, size, aligned_alloc_void, extended_size)) {
       ::operator delete(alloc);
       throw std::bad_alloc();
     }
-    aligned_alloc = reinterpret_cast<char *>(aligned_alloc_void);
+    aligned_alloc = reinterpret_cast<char *>(aligned_alloc_void) + info_offset;
     auto &info = get_info();
     info.underlying_ptr = alloc;
     info.previous_block = std::exchange(b.aligned_alloc, nullptr);
     info.size =
-        extended_size - (aligned_alloc - reinterpret_cast<char *>(alloc));
-    info.current_offset =
-        aligned_alloc + round_to_cache_lines(sizeof(block_info));
+        (reinterpret_cast<char *>(alloc) + extended_size) - aligned_alloc;
+    info.current_offset = aligned_alloc;
   }
   block(std::size_t size) : block(size, block()) {}
 
@@ -93,7 +94,7 @@ public:
   char *alloc(std::size_t s) {
     auto &info = get_info();
     if (!(aligned_alloc &&
-          s <= info.size - (info.current_offset - aligned_alloc)))
+          s <= std::size_t((aligned_alloc + info.size) - info.current_offset)))
       return nullptr;
     auto ret_ptr = info.current_offset;
     info.current_offset += s;
@@ -102,9 +103,7 @@ public:
 
   bool dealloc(char *p) {
     auto &info = get_info();
-    if (!(aligned_alloc &&
-          p >= aligned_alloc + round_to_cache_lines(sizeof(block_info)) &&
-          std::size_t(p - aligned_alloc) < info.size))
+    if (!(aligned_alloc && p >= aligned_alloc && p < aligned_alloc + info.size))
       return false;
     if (p < info.current_offset)
       info.current_offset = p;
