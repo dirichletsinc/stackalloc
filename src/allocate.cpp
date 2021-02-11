@@ -110,7 +110,11 @@ public:
     return true;
   }
 
-  std::size_t size() const { return get_info().size; }
+  std::size_t size() const {
+    if (aligned_alloc)
+      return get_info().size;
+    return 0;
+  }
 
   block previous_block() {
     return {std::exchange(get_info().previous_block, nullptr)};
@@ -172,6 +176,10 @@ char *stackalloc::detail::allocate(std::size_t s) {
     current_block = std::move(spare_block);
     return ptr;
   }
+
+  // Keep max_alloc_size growing 
+  if (max_alloc_size <= current_block.size())
+    max_alloc_size *= 4;
 
   // Make sure that we could produce at least four allocations in a block
   // without hitting the backing allocation implementation
